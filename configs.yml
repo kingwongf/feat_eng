@@ -1,0 +1,4 @@
+us_eq: data/us_equities.csv
+feats_df: data/feats_df.pkl
+log_adj_close: data/log_adj_close.pkl
+sp500: data/sp500_constituents.csv
