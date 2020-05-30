@@ -28,8 +28,13 @@ def test_get_optimal_ffd(x, ds, t=1e-3):
 ray.init()
 
 log_adj_close = pd.read_pickle(configs["log_adj_close"])
-ds = opt_ds = [test_get_optimal_ffd.remote(log_adj_close[col], np.arange(0.01,1.01, 0.01))
+opt_ds = [test_get_optimal_ffd.remote(log_adj_close[col].dropna(axis=0), np.arange(0.01,1.01, 0.01))
                     for col in log_adj_close.columns.tolist()]
+ray_opt_ds = ray.get(opt_ds)
+print(ray_opt_ds)
 
-print(ray.get(ds))
 
+d_dict = dict(zip(log_adj_close.columns.tolist(), ray_opt_ds))
+
+with open('opt_d_ffd.yml', 'w') as outfile:
+    yaml.dump(d_dict, outfile, default_flow_style=False)
