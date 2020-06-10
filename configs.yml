@@ -1,4 +1,17 @@
 us_eq: data/us_equities.csv
 feats_df: data/feats_df.pkl
-log_adj_close: data/log_adj_close.pkl
+log_prices:
+  log_adj_close: data/log_adj_close.pkl
+  log_adj_high: data/log_adj_high.pkl
+  log_adj_open: data/log_adj_open.pkl
+  log_adj_low: data/log_adj_low.pkl
+  log_adj_volume: data/log_adj_volume.pkl
 sp500: data/sp500_constituents.csv
+ffd: data/ffd_log_adj_
+ffd_feats: data/ffd_feats.pkl
+trend_label_5d_df: data/label_5d_df.pkl
+trend_label_20d_df: data/label_20d_df.pkl
+trend: data/trend_
+risk_adj: data/risk_adj_
+raw_ret: data/raw_ret_
+no_bfill_close: data/no_bfill_adj_close.pkl

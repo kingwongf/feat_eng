@@ -1,0 +1,64 @@
+import ray
+import statsmodels.api as sm
+from FFD import fracDiff_FFD
+import numpy as np
+import yaml
+import pandas as pd
+from functools import reduce
+with open("configs.yml") as file:
+    configs = yaml.load(file, Loader=yaml.FullLoader)
+
+
+
+def tValOLS(y):
+    x = np.ones((len(y), 2))
+    x[:,1] = np.arange(len(y))
+    mols = sm.OLS(y,x).fit()
+    return mols.tvalues[1]
+
+@ray.remote
+def trend_labelling(ser, span, min_obs=3):
+    assert span > min_obs
+    name = ser.name
+    ser = ser.to_frame()
+    ser['t_val'] = np.nan
+    ser['ret'] = np.nan
+    for curr_t in ser.iloc[:-span].index:
+        lookForward = ser[name].loc[curr_t:].iloc[:span]
+        max_abs_t_val = -np.inf
+        max_t_val = None
+        max_t_index = None
+        for fwd in range(min_obs, len(lookForward)):
+            y = lookForward.iloc[:fwd]
+            tVal = tValOLS(y)
+            if abs(tVal) > max_abs_t_val:
+                max_abs_t_val = abs(tVal)
+                max_t_val = tVal
+                max_t_index = y.index[-1]
+
+        ser.loc[curr_t, "t_val"] = max_t_val
+        ser.loc[curr_t, "st"] = max_t_index
+        # print(f"curr_t: {curr_t}, max_abs_t_val: {max_abs_t_val}, max_t_index: {max_t_index}")
+        # print(ser[name].loc[max_t_index])
+        # print(ser[name].loc[curr_t])
+        ser.loc[curr_t, "ret"] = ser[name].loc[max_t_index]/ ser[name].loc[curr_t] -1 if ser[name].loc[curr_t] !=0 else np.nan
+    ser['ticker'] = name
+    return ser.drop(name, axis=1)
+
+
+
+ray.init()
+
+num_t_days = 20
+adj_close = np.e**pd.read_pickle(configs["log_prices"]["log_adj_close"])
+fiveDaysTrendLabelRay = [trend_labelling.remote(adj_close[col].dropna(axis=0), num_t_days) for col in adj_close.columns.tolist()]
+# fiveDaysTrendLabel =[trend_labelling(adj_close[col],5) for col in adj_close.columns.tolist()]
+
+
+
+fiveDaysTrendLabel = ray.get(fiveDaysTrendLabelRay)
+
+
+label_df = reduce(lambda X, x: X.sort_index().append(x.sort_index()), fiveDaysTrendLabel)
+
+label_df.to_pickle(f"{configs['trend']}_{num_t_days}d.pkl")
